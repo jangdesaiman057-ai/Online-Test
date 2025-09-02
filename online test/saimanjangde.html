@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <title>ऑनलाइन परीक्षा सिस्टम</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f9; }
+    .container { width: 700px; margin: auto; background: #fff; padding: 20px; border-radius: 10px; margin-top: 40px; }
+    .hidden { display: none; }
+    button { padding: 10px 20px; margin: 10px; cursor: pointer; border: none; border-radius: 5px; background: #4CAF50; color: #fff; }
+    button:hover { background: #45a049; }
+    .timer { font-weight: bold; color: red; margin-bottom: 10px; }
+    .question { text-align: left; margin-bottom: 15px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <!-- Login Box -->
+  <div class="container" id="loginBox">
+    <h2>लॉगिन करें</h2>
+    <input type="text" id="username" placeholder="अपना नाम दर्ज करें"><br><br>
+    <button onclick="studentLogin()">Student Login</button>
+    <button onclick="adminLogin()">Admin Login</button>
+  </div>
+
+  <!-- Test Box -->
+  <div class="container hidden" id="testBox">
+    <h2>कंप्यूटर बेसिक ऑनलाइन टेस्ट</h2>
+    <div class="timer">शेष समय: <span id="time">600</span> सेकंड</div>
+    <form id="quizForm"></form>
+    <button type="button" onclick="submitTest()">टेस्ट सबमिट करें</button>
+  </div>
+
+  <!-- Result Box -->
+  <div class="container hidden" id="resultBox">
+    <h2>आपका परिणाम</h2>
+    <p id="studentName"></p>
+    <p id="score"></p>
+    <p id="percentage"></p>
+    <button onclick="goHome()">होम पर जाएं</button>
+  </div>
+
+  <!-- Admin Panel -->
+  <div class="container hidden" id="adminBox">
+    <h2>एडमिन पैनल</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>विद्यार्थी का नाम</th>
+          <th>अंक</th>
+          <th>प्रतिशत</th>
+        </tr>
+      </thead>
+      <tbody id="resultTable"></tbody>
+    </table>
+    <button onclick="goHome()">लॉगआउट</button>
+  </div>
+
+  <script>
+    // ======= हिंदी प्रश्न (50 प्रश्न) =======
+    let questions = [
+      {q:"CPU का पूरा नाम क्या है?", options:["सेंट्रल प्रोसेसिंग यूनिट","सेंट्रल प्रोग्रामिंग यूनिट","कंट्रोल प्रोसेसिंग यूनिट"], answer:"सेंट्रल प्रोसेसिंग यूनिट"},
+      {q:"MS Word किस प्रकार का सॉफ्टवेयर है?", options:["ऑपरेटिंग सिस्टम","वर्ड प्रोसेसर","डेटाबेस"], answer:"वर्ड प्रोसेसर"},
+      {q:"इंटरनेट की शुरुआत किस देश में हुई?", options:["भारत","अमेरिका","जापान"], answer:"अमेरिका"},
+      {q:"BIOS का पूरा नाम क्या है?", options:["बेसिक इनपुट आउटपुट सिस्टम","बाइनरी इनपुट आउटपुट सिग्नल","बेस इंटरनल आउटपुट सॉफ्टवेयर"], answer:"बेसिक इनपुट आउटपुट सिस्टम"},
+      {q:"RAM का पूरा नाम क्या है?", options:["रैंडम एक्सेस मेमोरी","रीड एक्सेस मेमोरी","रीड एंड मेमोरी"], answer:"रैंडम एक्सेस मेमोरी"},
+      {q:"हार्ड डिस्क किस प्रकार की मेमोरी है?", options:["प्राइमरी","सेकेंडरी","कैश"], answer:"सेकेंडरी"},
+      {q:"MS Excel का प्रयोग किस लिए किया जाता है?", options:["स्प्रेडशीट","डेटाबेस","प्रेजेंटेशन"], answer:"स्प्रेडशीट"},
+      {q:"ईमेल का पूरा नाम क्या है?", options:["इलेक्ट्रॉनिक मेल","ईज़ी मेल","एक्सटर्नल मेल"], answer:"इलेक्ट्रॉनिक मेल"},
+      {q:"LAN का पूरा नाम क्या है?", options:["लोकल एरिया नेटवर्क","लार्ज एरिया नेटवर्क","लॉन्ग एक्सेस नोड"], answer:"लोकल एरिया नेटवर्क"},
+      {q:"IPv4 का IP एड्रेस कितने बिट का होता है?", options:["32","64","16"], answer:"32"},
+      // 👉 इसी पैटर्न पर 50 प्रश्न तक जोड़ सकते हो
+    ];
+
+    let timer;
+    let timeLeft = 600; // 10 मिनट
+    let currentUser = "";
+    let isAdmin = false;
+
+    // Student Login
+    function studentLogin() {
+      let username = document.getElementById("username").value.trim();
+      if (username === "") { alert("कृपया नाम दर्ज करें"); return; }
+      currentUser = username;
+      isAdmin = false;
+      document.getElementById("loginBox").classList.add("hidden");
+      document.getElementById("testBox").classList.remove("hidden");
+      loadQuestions();
+      startTimer();
+    }
+
+    // Admin Login
+    function adminLogin() {
+      let password = prompt("एडमिन पासवर्ड दर्ज करें:");
+      if (password === "admin123") {
+        isAdmin = true;
+        document.getElementById("loginBox").classList.add("hidden");
+        document.getElementById("adminBox").classList.remove("hidden");
+        loadResults();
+      } else {
+        alert("गलत पासवर्ड!");
+      }
+    }
+
+    // Load Questions
+    function loadQuestions() {
+      let quizForm = document.getElementById("quizForm");
+      quizForm.innerHTML = "";
+      questions.forEach((q, index) => {
+        let div = document.createElement("div");
+        div.className = "question";
+        div.innerHTML = `<p>${index+1}. ${q.q}</p>` +
+          q.options.map(opt => `<label><input type="radio" name="q${index}" value="${opt}"> ${opt}</label><br>`).join("");
+        quizForm.appendChild(div);
+      });
+    }
+
+    // Start Timer
+    function startTimer() {
+      timer = setInterval(function() {
+        timeLeft--;
+        document.getElementById("time").textContent = timeLeft;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          submitTest();
+        }
+      }, 1000);
+    }
+
+    // Submit Test
+    function submitTest() {
+      clearInterval(timer);
+      let score = 0;
+      let total = questions.length;
+
+      questions.forEach((q, index) => {
+        let radios = document.getElementsByName("q"+index);
+        radios.forEach(r => {
+          if (r.checked && r.value === q.answer) {
+            score++;
+          }
+        });
+      });
+
+      let percentage = (score / total * 100).toFixed(2);
+
+      // Save in localStorage
+      let results = JSON.parse(localStorage.getItem("results") || "[]");
+      results.push({name: currentUser, score: score, total: total, percentage: percentage});
+      localStorage.setItem("results", JSON.stringify(results));
+
+      // Show Result
+      document.getElementById("testBox").classList.add("hidden");
+      document.getElementById("resultBox").classList.remove("hidden");
+      document.getElementById("studentName").textContent = "विद्यार्थी: " + currentUser;
+      document.getElementById("score").textContent = "अंक: " + score + " / " + total;
+      document.getElementById("percentage").textContent = "प्रतिशत: " + percentage + "%";
+    }
+
+    // Load All Results in Admin Panel
+    function loadResults() {
+      let results = JSON.parse(localStorage.getItem("results") || "[]");
+      let table = document.getElementById("resultTable");
+      table.innerHTML = "";
+      results.forEach(r => {
+        let row = `<tr>
+          <td>${r.name}</td>
+          <td>${r.score} / ${r.total}</td>
+          <td>${r.percentage}%</td>
+        </tr>`;
+        table.innerHTML += row;
+      });
+    }
+
+    // Go Home
+    function goHome() {
+      location.reload();
+    }
+  </script>
+</body>
+</html>
